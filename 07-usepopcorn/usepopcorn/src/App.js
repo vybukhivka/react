@@ -1,23 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import StarRating from './StarRating'
+import { useLocalStorgaState } from "./useLocalStorageState";
 import { useMovies } from "./useMovies";
+import { useKey } from "./useKey";
 
 const key = "3b6ac479"
 
 const average = (arr) =>
-  arr.reduce((acc, cur, i, arr) => acc + cur / arr.length, 0);
+  arr.reduce((acc, cur, _, arr) => acc + cur / arr.length, 0);
 
 export default function App() {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(null);
 
 	const {movies, isLoading, error} = useMovies(query)
-
-  // const [watched, setWatched] = useState([]);
-  const [watched, setWatched] = useState(() => {
-		const storedValue = localStorage.getItem('watched')
-		return JSON.parse(storedValue)
-	});
+  const [watched, setWatched] = useLocalStorgaState([], 'watched')
 
   function handleSelectMovie(id) {
 		selectedId === id ? setSelectedId(null) : setSelectedId(id)
@@ -29,17 +26,11 @@ export default function App() {
 
   function handleAddWatched(movie) {
     setWatched((watched) => [...watched, movie]);
-
-		// localStorage.setItem('watched', JSON.stringify([...watched, movie]))	
   }
 
   function handleRemoveWatched(id) {
     setWatched(watched => watched.filter(movie => movie.imdbID !== id))
   }
-
-	useEffect(() => {
-		localStorage.setItem('watched', JSON.stringify(watched))	
-	}, [watched])
 
   return (
     <>
@@ -119,24 +110,11 @@ function Logo() {
 function Search({ query, setQuery }) {
 	const inputEl = useRef(null)
 
-	useEffect(() => {
-		const callback = (e) => {
+  useKey('Enter', () => {
 			if(document.activeElement === inputEl.current) return
-
-			if(e.code === 'Enter') {
 				inputEl.current.focus()
 				setQuery('')
-			} 
-		}
-		document.addEventListener('keydown', callback)
-		return () => document.addEventListener('keydown', callback)
-	}, [setQuery])
-	
-	// useEffect(() => {
-	// 	const el = document.querySelector('.search')
-	// 	console.log(el)
-	// 	el.focus()
-	// }, [])
+			})
 
   return (
     <input
@@ -146,7 +124,6 @@ function Search({ query, setQuery }) {
       value={query}
       onChange={(e) => setQuery(e.target.value)}
 			ref={inputEl}
-			tabIndex={-1}
     />
   );
 }
@@ -157,7 +134,6 @@ function Main({ children }) {
 
 function Box({ children }) {
   const [isOpen, setIsOpen] = useState(true);
-
   return (
     <div className="box">
       <button className="btn-toggle" onClick={() => setIsOpen((open) => !open)}>
@@ -283,18 +259,7 @@ function MovieDetails({
 		// setAvgRating(avgRating => (avgRating + userRating) / 2)
   }
 
-	useEffect(() => {
-		const callback = (e) => {
-      if (e.code === "Escape") {
-        onCloseMovie()
-      }
-    }
-
-		document.addEventListener("keydown", callback)
-		return () => {
-			document.removeEventListener("keydown", callback)
-		};
-	}, [onCloseMovie])
+  useKey('Escape', onCloseMovie)
 
   useEffect(() => {
     async function getMovieDetails() {
